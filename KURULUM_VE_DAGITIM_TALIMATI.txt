@@ -1,0 +1,107 @@
+================================================================
+  FİKSTÜR TALEP UYGULAMASI — KURULUM VE DAĞITIM TALİMATI
+================================================================
+Hazırlayan : Claude (Anthropic)
+Tarih       : 2026-04-12
+Dosya       : fikstur_talep2.py
+================================================================
+
+
+── ADIM 1 — DİZİN AYARI ────────────────────────────────────────
+
+fikstur_talep2.py dosyasını aç.
+70. satırda DEFAULT_BASE_DIR satırını bul ve istediğin dizine göre değiştir:
+
+  Yerel dizin örneği:
+    DEFAULT_BASE_DIR = Path(r"C:\FixtureRequests")
+
+  Ağ sürücüsü örneği:
+    DEFAULT_BASE_DIR = Path(r"\\SUNUCU\Paylasim\FixtureRequests")
+
+NOT: Seçtiğin klasörün yazma iznine sahip olduğundan emin ol.
+
+
+── ADIM 2 — BAĞIMLILIK KURULUMU (Windows) ──────────────────────
+
+Komut İstemi'ni (cmd) aç ve sırasıyla çalıştır:
+
+  pip install PySide6
+  pip install openpyxl
+  pip install reportlab
+  pip install pywin32
+
+Hepsi birden:
+  pip install PySide6 openpyxl reportlab pywin32
+
+
+── ADIM 3 — ÖNCE PYTHON İLE TEST ET ───────────────────────────
+
+Uygulamayı exe yapmadan önce Python ile çalıştır:
+
+  python fikstur_talep2.py
+
+Kontrol listesi:
+  [ ] Uygulama açıldı
+  [ ] Form dolduruldu
+  [ ] "Kaydet ve Gönder" butonuna basıldı
+  [ ] Outlook maili gönderdi (oguzhanb@aselsan.com.tr)
+  [ ] Belirtilen dizinde klasör oluştu
+  [ ] Excel log dosyası oluştu (fikstur_talep_log.xlsx)
+  [ ] PDF özeti oluştu
+
+
+── ADIM 4 — EXE OLUŞTURMA ──────────────────────────────────────
+
+PyInstaller'ı kur:
+  pip install pyinstaller
+
+fikstur_talep2.py dosyasının bulunduğu klasörde cmd aç ve çalıştır:
+
+  pyinstaller --onefile --windowed --name "FiksturTalep" fikstur_talep2.py
+
+Eğer pywin32 ile ilgili hata alırsan şu komutu kullan:
+
+  pyinstaller --onefile --windowed --name "FiksturTalep" --collect-all win32com --collect-all pythoncom fikstur_talep2.py
+
+Oluşan exe dosyasının konumu:
+  dist\FiksturTalep.exe
+
+
+── ADIM 5 — DAĞITIM ────────────────────────────────────────────
+
+Kullanıcılara sadece "FiksturTalep.exe" dosyasını ver.
+
+  - Karşı tarafta Python kurulu OLMASI GEREKMİYOR.
+  - Başka hiçbir kurulum GEREKMEZ.
+  - Sadece .exe'yi çift tıklayıp çalıştırıyorlar.
+
+
+── OLASI SORUNLAR VE ÇÖZÜMLERİ ────────────────────────────────
+
+SORUN: "Outlook güvenlik uyarısı" çıkıyor
+ÇÖZÜM: IT biriminden Outlook COM güvenlik iznini aç
+
+SORUN: Pywin32 / pythoncom DLL hatası
+ÇÖZÜM: PyInstaller komutuna --collect-all win32com --collect-all pythoncom ekle
+
+SORUN: Antivirus FiksturTalep.exe'yi engelledi
+ÇÖZÜM: IT birimine bildir, exe'yi whitelist'e aldır
+
+SORUN: Ağ dizinine yazamıyor
+ÇÖZÜM: Ağ klasörünün izinlerini kontrol et (yazma yetkisi olmalı)
+
+SORUN: Türkçe karakter bozukluğu
+ÇÖZÜM: Windows Bölge Ayarları > Yönetim > Sistem Yerel Ayarı >
+        "Beta: Dünya geneli dil desteği için Unicode UTF-8 kullan" kutusunu işaretle
+
+
+── ÖZET ────────────────────────────────────────────────────────
+
+  1. DEFAULT_BASE_DIR'i ayarla  (fikstur_talep2.py, satır 70)
+  2. pip install PySide6 openpyxl reportlab pywin32
+  3. python fikstur_talep2.py   → Outlook + kayıt testini yap
+  4. pip install pyinstaller
+  5. pyinstaller --onefile --windowed --name "FiksturTalep" fikstur_talep2.py
+  6. dist\FiksturTalep.exe dosyasını dağıt
+
+================================================================

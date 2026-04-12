@@ -1,0 +1,4 @@
+PySide6>=6.5.0
+openpyxl>=3.1.0
+reportlab>=4.0.0
+pywin32>=306        # Windows only — Outlook otomasyonu için

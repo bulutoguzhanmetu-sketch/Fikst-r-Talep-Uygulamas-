@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+*.spec
+*.xlsx
+FixtureRequests/
+venv/
+.env
