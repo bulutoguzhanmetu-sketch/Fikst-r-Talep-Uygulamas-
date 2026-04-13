@@ -7,6 +7,7 @@ OKTM — Optik Kaplama Tasarım Müdürlüğü
 Mac / Windows uyumlu PySide6 sürümü
 """
 
+import csv
 import math
 import os
 import re
@@ -61,6 +62,14 @@ MAIL_TO = "oguzhanb@aselsan.com.tr"
 FOOTER_TEXT = "OKTM — Optik Kaplama Tasarım Müdürlüğü"
 LOG_FILENAME = "fikstur_talep_log.xlsx"
 MAIL_SUBJECT_PREFIX = "Fikstür Talep"
+
+# ── Jira CSV dışa aktarma ───────────────────────────────────
+JIRA_CSV_FILENAME = "jira_import.csv"
+# Jira proje anahtarınızı buraya yazın (örn: "OFIX", "OKTM").
+# Boş bırakırsanız CSV içinde "Project Key" sütunu boş kalır;
+# Jira içe aktarma sihirbazında hedef projeyi seçmeniz yeterlidir.
+JIRA_PROJECT_KEY = ""
+JIRA_ISSUE_TYPE = "Task"
 
 COATING_SYSTEMS = [f"F{i}" for i in range(1, 13)] + [f"S{i}" for i in range(1, 5)]
 MATERIALS = ["Alüminyum", "Paslanmaz Çelik", "Titanyum", "PEEK", "Delrin", "Diğer"]
