@@ -21,6 +21,10 @@ try:
     if IS_WINDOWS:
         import pythoncom
         import win32com.client
+        try:
+            import win32timezone  # PyInstaller paketinde COM zaman dilimi desteği için gerekli
+        except Exception:
+            pass
     else:
         pythoncom = None
         win32com = None
@@ -439,7 +443,7 @@ def send_outlook_email(to_addr: str, subject: str, body: str, attachments: list[
             "pywin32 modülü bulunamadı. Windows ortamında 'pip install pywin32' kurulumunu yapmalısın."
         )
 
-    pythoncom.CoInitialize()
+    pythoncom.CoInitializeEx(0)   # 0 = COINIT_APARTMENTTHREADED (STA) — EXE ortamında gerekli
     try:
         outlook = win32com.client.Dispatch("Outlook.Application")
         mail = outlook.CreateItem(0)
@@ -457,6 +461,7 @@ def send_outlook_email(to_addr: str, subject: str, body: str, attachments: list[
             pythoncom.CoUninitialize()
         except Exception:
             pass
+
 
 
 # ========================= STYLES =========================
@@ -1187,6 +1192,10 @@ class DropZone(QFrame):
             self.setStyleSheet(self._SS_HOVER)
             event.acceptProposedAction()
 
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
     def dragLeaveEvent(self, event):
         self.setStyleSheet(self._SS_FILLED if self.file_path else self._SS_EMPTY)
 
@@ -1513,9 +1522,9 @@ class MainWindow(QMainWindow):
 
         self.drop_stp = DropZone(
             StpIcon(),
-            "STP / STEP Dosyası",
+            "STP / STEP / PRT Dosyası",
             "Sürükle bırak yapabilir veya dosya seçebilirsin.",
-            (".stp", ".step"),
+            (".stp", ".step", ".prt"),
         )
         self.drop_pdf = DropZone(
             "📄",

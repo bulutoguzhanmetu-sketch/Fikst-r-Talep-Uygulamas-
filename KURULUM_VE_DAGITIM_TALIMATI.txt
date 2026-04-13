@@ -57,11 +57,16 @@ PyInstaller'ı kur:
 
 fikstur_talep2.py dosyasının bulunduğu klasörde cmd aç ve çalıştır:
 
-  pyinstaller --onefile --windowed --name "FiksturTalep" fikstur_talep2.py
+  pyinstaller --onefile --windowed --name "FiksturTalep" ^
+    --collect-all win32com ^
+    --collect-all pythoncom ^
+    --collect-all win32 ^
+    --hidden-import win32timezone ^
+    --hidden-import pywintypes ^
+    fikstur_talep2.py
 
-Eğer pywin32 ile ilgili hata alırsan şu komutu kullan:
-
-  pyinstaller --onefile --windowed --name "FiksturTalep" --collect-all win32com --collect-all pythoncom fikstur_talep2.py
+NOT: Yukarıdaki komut mail gönderimi ve sürükle-bırak özelliklerinin
+     EXE'de düzgün çalışması için gerekli pywin32 DLL'lerini toplar.
 
 Oluşan exe dosyasının konumu:
   dist\FiksturTalep.exe
@@ -81,8 +86,8 @@ Kullanıcılara sadece "FiksturTalep.exe" dosyasını ver.
 SORUN: "Outlook güvenlik uyarısı" çıkıyor
 ÇÖZÜM: IT biriminden Outlook COM güvenlik iznini aç
 
-SORUN: Pywin32 / pythoncom DLL hatası
-ÇÖZÜM: PyInstaller komutuna --collect-all win32com --collect-all pythoncom ekle
+SORUN: Pywin32 / pythoncom DLL hatası veya EXE'de mail gönderilmiyor
+ÇÖZÜM: Adım 4'teki tam komutu kullan (--collect-all win32 --hidden-import win32timezone vb.)
 
 SORUN: Antivirus FiksturTalep.exe'yi engelledi
 ÇÖZÜM: IT birimine bildir, exe'yi whitelist'e aldır
@@ -101,7 +106,7 @@ SORUN: Türkçe karakter bozukluğu
   2. pip install PySide6 openpyxl reportlab pywin32
   3. python fikstur_talep2.py   → Outlook + kayıt testini yap
   4. pip install pyinstaller
-  5. pyinstaller --onefile --windowed --name "FiksturTalep" fikstur_talep2.py
+  5. pyinstaller --onefile --windowed --name "FiksturTalep" --collect-all win32com --collect-all pythoncom --collect-all win32 --hidden-import win32timezone --hidden-import pywintypes fikstur_talep2.py
   6. dist\FiksturTalep.exe dosyasını dağıt
 
 ================================================================
