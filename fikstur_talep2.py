@@ -12,6 +12,8 @@ import os
 import re
 import sys
 import shutil
+import time
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -245,11 +247,21 @@ def _ensure_pdf_font():
     if _PDF_FONT_REGISTERED:
         return
 
+    win_fonts = Path(os.environ.get("SystemRoot", "C:/Windows")) / "Fonts"
     candidates = [
+        # Windows — Türkçe karakter desteği olan fontlar
+        win_fonts / "arial.ttf",
+        win_fonts / "tahoma.ttf",
+        win_fonts / "calibri.ttf",
+        win_fonts / "segoeui.ttf",
+        win_fonts / "verdana.ttf",
+        # macOS
         Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
         Path("/Library/Fonts/Arial.ttf"),
         Path("/System/Library/Fonts/Supplemental/Helvetica.ttc"),
+        # Linux
         Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
     ]
 
     for p in candidates:
@@ -434,6 +446,90 @@ def build_mail_body(req: "RequestData", log_data: dict) -> str:
     return "\n".join(lines)
 
 
+def _auto_classify_titus():
+    """
+    TITUS sınıflandırma dialogunu arka planda otomatik olarak 'Tasnif Dışı'
+    seçerek kapatır.  mail.Send() çağrılmadan önce bir daemon thread olarak
+    başlatılmalıdır; dialog görünür görünmez tetiklenir.
+    """
+    try:
+        import win32gui
+        import win32con
+        import win32api as _wa
+
+        deadline = time.time() + 25  # 25 saniye içinde dialog açılmazsa çık
+
+        while time.time() < deadline:
+            time.sleep(0.25)
+
+            matches: list = []
+
+            def _find_top(hwnd, _):
+                if not win32gui.IsWindowVisible(hwnd):
+                    return True
+                title = win32gui.GetWindowText(hwnd)
+                if any(kw in title for kw in ("TITUS", "Tasnif", "Classification", "Sınıflandırma")):
+                    matches.append(hwnd)
+                return True
+
+            win32gui.EnumWindows(_find_top, None)
+            if not matches:
+                continue
+
+            dlg = matches[0]
+
+            # Alt kontrolleri topla
+            items: list = []
+
+            def _find_child(hwnd, _):
+                text = win32gui.GetWindowText(hwnd)
+                if text:
+                    items.append((hwnd, text))
+                return True
+
+            try:
+                win32gui.EnumChildWindows(dlg, _find_child, None)
+            except Exception:
+                pass
+
+            # "Tasnif Dışı" seçeneğini tıkla (radio button veya liste öğesi)
+            for hwnd, text in items:
+                if "Tasnif D" in text:
+                    _wa.PostMessage(hwnd, win32con.BM_CLICK, 0, 0)
+                    time.sleep(0.4)
+                    break
+
+            # OK / Tamam / Onayla butonunu bul ve tıkla
+            items2: list = []
+            try:
+                win32gui.EnumChildWindows(
+                    dlg,
+                    lambda h, _: items2.append((h, win32gui.GetWindowText(h))) or True,
+                    None,
+                )
+            except Exception:
+                pass
+
+            for hwnd, text in items2:
+                clean = text.strip().replace("&", "")
+                if clean in ("OK", "Tamam", "Onayla", "Gönder", "Send", "Devam"):
+                    _wa.PostMessage(hwnd, win32con.BM_CLICK, 0, 0)
+                    return
+
+            # Buton bulunamadıysa Enter tuşu ile kapat
+            try:
+                win32gui.SetForegroundWindow(dlg)
+                _wa.keybd_event(win32con.VK_RETURN, 0, 0, 0)
+                time.sleep(0.1)
+                _wa.keybd_event(win32con.VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+            except Exception:
+                pass
+            return
+
+    except Exception:
+        pass  # pywin32 yoksa veya dialog farklı yapıdaysa sessizce geç
+
+
 def send_outlook_email(to_addr: str, subject: str, body: str, attachments: list[Path]):
     if not IS_WINDOWS:
         raise RuntimeError("Otomatik Outlook gönderimi yalnızca Windows üzerinde kullanılabilir.")
@@ -454,6 +550,9 @@ def send_outlook_email(to_addr: str, subject: str, body: str, attachments: list[
         for attachment in attachments:
             if attachment and Path(attachment).exists():
                 mail.Attachments.Add(str(attachment))
+
+        # TITUS sınıflandırma dialogu varsa arka planda otomatik 'Tasnif Dışı' seç
+        threading.Thread(target=_auto_classify_titus, daemon=True).start()
 
         mail.Send()
     finally:
@@ -1150,7 +1249,13 @@ class DropZone(QFrame):
         v.addStretch()
 
     def _valid(self, p: Path) -> bool:
-        return p.is_file() and p.suffix.lower() in self.accept_exts
+        if not p.is_file():
+            return False
+        # Standart uzantı kontrolü (örn: parca.stp)
+        if p.suffix.lower() in self.accept_exts:
+            return True
+        # CREO versiyonlu dosyalar: parca.prt.3 → suffixes = ['.prt', '.3']
+        return any(s.lower() in self.accept_exts for s in p.suffixes)
 
     def set_file(self, p: Path | None):
         self.file_path = p
@@ -1174,7 +1279,8 @@ class DropZone(QFrame):
         self.set_file(None)
 
     def pick_file(self):
-        filt = "Dosya (" + " ".join(f"*{e}" for e in self.accept_exts) + ")"
+        exts_str = " ".join(f"*{e}" for e in self.accept_exts)
+        filt = f"Desteklenen Dosyalar ({exts_str});;Tüm Dosyalar (*.*)"
         fname, _ = QFileDialog.getOpenFileName(self, "Dosya Seç", str(Path.home()), filt)
         if fname:
             p = Path(fname)
@@ -1188,23 +1294,35 @@ class DropZone(QFrame):
             self.set_file(p)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
+        if event.mimeData().hasUrls() or event.mimeData().hasText():
             self.setStyleSheet(self._SS_HOVER)
             event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
+        if event.mimeData().hasUrls() or event.mimeData().hasText():
             event.acceptProposedAction()
 
     def dragLeaveEvent(self, event):
         self.setStyleSheet(self._SS_FILLED if self.file_path else self._SS_EMPTY)
 
+    def _path_from_event(self, event) -> "Path | None":
+        """MIME verisinden dosya yolunu çıkarır — URL veya metin formatını destekler."""
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls:
+                return Path(urls[0].toLocalFile())
+        if event.mimeData().hasText():
+            text = event.mimeData().text().strip().strip('"\'')
+            candidate = Path(text)
+            if candidate.exists():
+                return candidate
+        return None
+
     def dropEvent(self, event):
-        urls = event.mimeData().urls()
-        if not urls:
+        p = self._path_from_event(event)
+        if p is None:
             return
 
-        p = Path(urls[0].toLocalFile())
         if not self._valid(p):
             QMessageBox.warning(
                 self,
