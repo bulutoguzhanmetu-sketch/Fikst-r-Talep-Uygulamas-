@@ -8,3 +8,11 @@ build/
 FixtureRequests/
 venv/
 .env
+
+# coating_agent: kaynak PDF'ler, vektör veritabanı ve üretilen raporlar commit edilmez
+coating_agent/source_pdfs/*
+!coating_agent/source_pdfs/.gitkeep
+coating_agent/data/*
+!coating_agent/data/.gitkeep
+coating_agent/output/*
+!coating_agent/output/.gitkeep
